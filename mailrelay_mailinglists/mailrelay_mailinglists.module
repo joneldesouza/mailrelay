@@ -1,0 +1,51 @@
+<?php
+
+function mailrelay_mailinglists_menu() {
+  $items = array();
+  $items['admin/config/services/mailrelay/mailinglists'] = array(
+    'title' => 'Mailing Lists',
+    'description' => 'List of mailing lists',
+    'page callback' => 'mailrelay_mailinglists_getMailingLists',
+    'access arguments' => array('access content'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  return $items;
+}
+
+function mailrelay_mailinglists_getMailingLists() {
+  $lists = mailrelay_mailinglists_getMailingListsData();
+
+  foreach ($lists as $value) {
+    $statistic = '<a href="' . url('admin/config/services/mailrelay/statistics/' . $value->id) . '">Statistic</a>';
+    $rows[] = array($value->id, $value->subject, $value->send_date, $statistic);
+  }
+
+  $header = array(
+    array('data' => t('ID')),
+    array('data' => t('Subject')),
+    array('data' => t('Send date')),
+    array('data' => t('Statistics')),
+  );
+
+  $build['#theme'] = 'table';
+  $build['#header'] = $header;
+  $build['#rows'] = $rows;
+  return $build;
+}
+
+function mailrelay_mailinglists_getMailingListsData() {
+  $curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
+
+  $postdata = array(
+    'function' => 'getMailingLists',
+    'apiKey' => variable_get('mailrelay_api_key', ''),
+  );
+
+  curl_setopt($curl, CURLOPT_POST, TRUE);
+  curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
+  curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+  $json = curl_exec($curl);
+  $result = json_decode($json);
+  return $result->data;
+}

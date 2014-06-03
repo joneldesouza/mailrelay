@@ -1,0 +1,133 @@
+<?php
+
+function mailrelay_signups_block_info() {
+  $blocks = array();
+  $blocks['mailrelay_signups_form'] = array(
+    'info' => t('Mailrelay Signup'),
+  );
+  return $blocks;
+}
+
+function mailrelay_signups_block_view($delta='') {
+  $block = array();
+  switch ($delta) {
+    case 'mailrelay_signups_form':
+      $block['subject'] = t('Mailrelay Signups');
+      $block['content'] = drupal_get_form('mailrelay_signups_form');
+    break;
+  }
+  return $block;
+}
+
+function mailrelay_signups_form($form, &$form_state) {
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Name'),
+    '#default_value' => '',
+    '#size' => 25,
+    '#maxlength' => 254,
+    '#required' => FALSE,
+  );
+  $form['email'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Email'),
+    '#default_value' => '',
+    '#size' => 25,
+    '#maxlength' => 254,
+    '#required' => TRUE,
+  );
+  $form['groups'] = array(
+    '#type' => 'checkboxes',
+    '#options' => mailrelay_signups_getGroups(),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+    '#ajax' => array(
+      'callback' => 'mailrelay_signups_ajax_submit',
+      'wrapper' => 'mailrelay-signup-form',
+      'method' => 'replace',
+      'effect' => 'fade',
+    ),
+  );
+  return $form;
+}
+
+function mailrelay_signups_ajax_submit($form, &$form_state, &$vars) {
+  drupal_validate_form('mailrelay_signups_form', $form, $form_state);
+  if (form_get_errors()) {
+    $form_state['rebuild'] = TRUE;
+    return $form;
+  }
+  $get_message = drupal_get_messages('status');
+  $message = "<div class=\"messages status\">" . $get_message['status'][0] . "</div>";
+  $output = array(
+    '#markup' => $message
+  );
+  return $output;
+}
+
+function mailrelay_signups_form_validate($form, &$form_state) {
+  $email = $form_state['values']['email'];
+  if (valid_email_address($email) == 0) {
+    form_set_error('email', t('Not a valid email address'));
+  }
+}
+
+function mailrelay_signups_form_submit($form, &$form_state) {
+  $curl = curl_init('http://' . variable_get('mailrelay_signups_hostname', '') . '/ccm/admin/api/version/2/&type=json');
+
+  if (!empty($form_state['values']['groups'])) {
+    $group = $form_state['values']['groups'];
+  }
+  else {
+    $group = 0;
+  };
+
+  $postdata = array(
+    'function' => 'addSubscriber',
+    'apiKey' => variable_get('mailrelay_signups_api_key', ''),
+    'email' => $form_state['values']['email'],
+    'name' => $form_state['values']['name'],
+    'groups' => $group
+  );
+
+  curl_setopt($curl, CURLOPT_POST, TRUE);
+  curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
+  curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+  $json = curl_exec($curl);
+  $result = json_decode($json);
+
+  if ($result->status == 0) {
+    form_set_error('email', t('The email already exists'));
+  }
+  if ($result->status == 1) {
+    drupal_set_message(t('Thank you for subscribing, @email!', array('@email' => $email)), 'status');
+  }
+}
+
+function mailrelay_signups_getGroups() {
+  $curl = curl_init('http://' . variable_get('mailrelay_signups_hostname', '') . '/ccm/admin/api/version/2/&type=json');
+
+  $postdata = array(
+    'function' => 'getGroups',
+    'apiKey' => variable_get('mailrelay_signups_api_key', '')
+  );
+
+  curl_setopt($curl, CURLOPT_POST, TRUE);
+  curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
+  curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+  $json = curl_exec($curl);
+  $result = json_decode($json);
+
+  $options = array();
+  $groups = $result->data;
+  foreach ($groups as $group) {
+    if ($group->visible == 1 && $group->enable == 1) {
+      $options[$group->id] = $group->name;
+    }
+  }
+  return $options;
+}

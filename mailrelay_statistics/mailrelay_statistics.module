@@ -1,0 +1,102 @@
+<?php
+
+function mailrelay_statistics_menu() {
+  $items = array();
+  $items['admin/config/services/mailrelay/statistics'] = array(
+    'title' => 'Statistics',
+    'page callback' => 'mailrelay_statistics_page',
+    // 'page arguments' => array('mailrelay_statistics_form'),
+    'access arguments' => array('administer content'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  return $items;
+}
+
+function mailrelay_statistics_form($form, &$form_state) {
+  $mailinglists = mailrelay_mailinglists_getMailingListsData();
+  $options = array();
+  foreach ($mailinglists as $row) {
+    $options[$row->id] = $row->subject;
+  }
+
+  if (variable_get('mailrelay_statistics_value', '')) {
+    $mid = variable_get('mailrelay_statistics_value', '');
+  }
+  else {
+    $mid = arg(5);
+  };
+
+  $form['mailinglists'] = array(
+    '#title' => 'Mailing Lists',
+    '#type' => 'select',
+    '#options' => $options,
+    '#default_value' => $mid,
+    '#required' => TRUE,
+  );	
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  return $form;
+}
+
+function mailrelay_statistics_form_submit($form, &$form_state) {
+  variable_set('mailrelay_statistics_value', $form_state['values']['mailinglists']);
+}
+
+function mailrelay_statistics_page() {
+  $render_form = drupal_get_form('mailrelay_statistics_form');
+	
+  if (variable_get('mailrelay_statistics_value', '')) {
+    $mid = variable_get('mailrelay_statistics_value', '');
+  }
+  else {
+    $mid = arg(5);
+  };
+
+  if($mid) {					
+    $mailinglists = mailrelay_mailinglists_getMailingListsData();
+
+    $options = array();
+    foreach ($mailinglists as $row) {
+      $options[] = $row->id;
+    }
+    $curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
+
+    $postdata = array(
+      'function' => 'getStats',
+      'apiKey' => variable_get('mailrelay_api_key', ''),
+      'id' => $mid
+    );
+
+    variable_del('mailrelay_statistics_value', '');
+
+    curl_setopt($curl, CURLOPT_POST, true);
+    curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+    $json = curl_exec($curl);
+    $result = json_decode($json);
+
+    $statistics = $result->data;
+
+    foreach ($statistics as $key => $value) {
+      $rows[] = array($key, $value);
+    }
+
+    $header = array(
+      array('data' => t('Type')),
+      array('data' => t('Value')),
+    );
+
+    $render_table['#theme'] = 'table';
+    $render_table['#header'] = $header;
+    $render_table['#rows'] = $rows;
+
+    $build = array($render_form, $render_table);		
+    return $build;		
+  }
+  else {
+    return $render_form;
+  }
+}
