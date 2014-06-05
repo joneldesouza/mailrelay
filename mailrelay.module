@@ -3,7 +3,7 @@
  * @file
  * The functions for the Mailrelay Signup module.
  */
-
+ 
 function mailrelay_permission() {
   return array(
     'administer mailrelay' => array(
@@ -24,6 +24,7 @@ function mailrelay_menu() {
   );
   $items['admin/config/services/mailrelay/settings'] = array(
     'title' => 'Settings',
+		'weight' => 0,
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
   return $items;

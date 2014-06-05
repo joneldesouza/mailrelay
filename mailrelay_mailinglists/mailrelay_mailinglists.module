@@ -7,6 +7,7 @@ function mailrelay_mailinglists_menu() {
     'description' => 'List of mailing lists',
     'page callback' => 'mailrelay_mailinglists_getMailingLists',
     'access arguments' => array('access content'),
+		'weight' => 1,
     'type' => MENU_LOCAL_TASK,
   );
   return $items;
@@ -14,16 +15,16 @@ function mailrelay_mailinglists_menu() {
 
 function mailrelay_mailinglists_getMailingLists() {
   $lists = mailrelay_mailinglists_getMailingListsData();
-
   foreach ($lists as $value) {
     $statistic = '<a href="' . url('admin/config/services/mailrelay/statistics/' . $value->id) . '">Statistic</a>';
-    $rows[] = array($value->id, $value->subject, $value->send_date, $statistic);
+		$value_number = str_replace(',', '.', number_format($value->sent));
+    $rows[] = array($value->subject, $value->send_date, $value_number, $statistic);
   }
 
   $header = array(
-    array('data' => t('ID')),
     array('data' => t('Subject')),
     array('data' => t('Send date')),
+    array('data' => t('Sent for subscribers')),
     array('data' => t('Statistics')),
   );
 

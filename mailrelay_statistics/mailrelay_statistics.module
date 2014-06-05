@@ -1,5 +1,4 @@
 <?php
-
 function mailrelay_statistics_menu() {
   $items = array();
   $items['admin/config/services/mailrelay/statistics'] = array(
@@ -7,6 +6,7 @@ function mailrelay_statistics_menu() {
     'page callback' => 'mailrelay_statistics_page',
     // 'page arguments' => array('mailrelay_statistics_form'),
     'access arguments' => array('administer content'),
+		'weight' => 2,
     'type' => MENU_LOCAL_TASK,
   );
   return $items;
@@ -54,49 +54,103 @@ function mailrelay_statistics_page() {
     $mid = arg(5);
   };
 
-  if($mid) {					
-    $mailinglists = mailrelay_mailinglists_getMailingListsData();
+	$curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
 
-    $options = array();
-    foreach ($mailinglists as $row) {
-      $options[] = $row->id;
+	$postdata = array(
+		'function' => 'getStats',
+		'apiKey' => variable_get('mailrelay_api_key', ''),
+		'id' => $mid
+	);
+
+	curl_setopt($curl, CURLOPT_POST, true);
+	curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
+	curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+	$json = curl_exec($curl);
+	$result = json_decode($json);
+	$general_statistics = $result->data;
+	
+	// Get Clicks informations
+	$postdataclick = array(
+		'function' => 'getClicksInfo',
+		'apiKey' => variable_get('mailrelay_api_key', ''),
+		'id' => $mid
+	);
+
+	curl_setopt($curl, CURLOPT_POST, true);
+	curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdataclick));
+	curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+	$json = curl_exec($curl);
+	$result = json_decode($json);
+	$click_statistics = $result->data;
+
+	variable_del('mailrelay_statistics_value', '');
+	
+  if($mid) {
+
+    foreach ($general_statistics as $key => $value) {
+			$key = ucwords(str_replace('_', ' ', t($key)));
+			$value_number = str_replace(',', '.', number_format($value));
+      $rows[] = array($key, $value_number);
+			$nametype[] = array($key);
+			$quantity[] = array($value);
     }
-    $curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
-
-    $postdata = array(
-      'function' => 'getStats',
-      'apiKey' => variable_get('mailrelay_api_key', ''),
-      'id' => $mid
-    );
-
-    variable_del('mailrelay_statistics_value', '');
-
-    curl_setopt($curl, CURLOPT_POST, true);
-    curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
-    curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-
-    $json = curl_exec($curl);
-    $result = json_decode($json);
-
-    $statistics = $result->data;
-
-    foreach ($statistics as $key => $value) {
-      $rows[] = array($key, $value);
-    }
-
+		
     $header = array(
       array('data' => t('Type')),
-      array('data' => t('Value')),
+      array('data' => t('Quantity')),
     );
 
     $render_table['#theme'] = 'table';
     $render_table['#header'] = $header;
     $render_table['#rows'] = $rows;
 
-    $build = array($render_form, $render_table);		
+    // Gera grafico por clicks nas cidade
+		$options = array();
+		foreach ($click_statistics as $key => $value) {
+			$location = explode(" - ", $value->location);
+			$city = $location[0];
+			$state = $location[1];
+			$options[] = $city;
+		}
+		
+		$count_city = array_count_values($options);
+		foreach ($count_city as $city_value => $city_quantity) {
+			$city_quantity = str_replace(',', '.', number_format($city_quantity));
+			$rows_clicks[] = array($city_value, $city_quantity);
+		}
+		// dpm($count_city);
+		
+		$header_clicks = array(
+			array('data' => t('City')),
+			array('data' => t('Quantity')),
+		);
+	
+		$render_table_clicks['#theme'] = 'table';
+		$render_table_clicks['#header'] = $header_clicks;
+		$render_table_clicks['#rows'] = $rows_clicks;
+
+
+    $build = array($render_form, $render_table, $render_table_clicks);
+
+		drupal_add_js('https://www.google.com/jsapi', 'external');
+		drupal_add_js(array(
+		  'mailrelay_statistics' => 
+			  array(
+			    'nametype' => $nametype,
+				  'quantity' => $quantity,
+				  'click_location' => $count_city
+			  )
+			),
+			array('type' => 'setting')
+		);
+		drupal_add_js(drupal_get_path('module', 'mailrelay_statistics') . '/js/statistic.js');
+
     return $build;		
   }
   else {
-    return $render_form;
+		$build = array($render_form);
+    return $build;
   }
 }
