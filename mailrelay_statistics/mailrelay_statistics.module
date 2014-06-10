@@ -4,10 +4,33 @@ function mailrelay_statistics_menu() {
   $items['admin/config/services/mailrelay/statistics'] = array(
     'title' => 'Statistics',
     'page callback' => 'mailrelay_statistics_page',
-    // 'page arguments' => array('mailrelay_statistics_form'),
     'access arguments' => array('administer content'),
 		'weight' => 2,
     'type' => MENU_LOCAL_TASK,
+		'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+	$items['admin/config/services/mailrelay/statistics/general'] = array(
+    'title' => 'General',
+    'page callback' => 'mailrelay_statistics_page',
+    'access arguments' => array('administer content'),
+		'weight' => 1,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+	$items['admin/config/services/mailrelay/statistics/location'] = array(
+    'title' => 'Location',
+    'page callback' => 'mailrelay_statistics_page_location',
+    'access arguments' => array('administer content'),
+		'weight' => 2,
+    'type' => MENU_LOCAL_TASK,
+		'file' => 'mailrelay_statistics_location.inc',
+  );
+	$items['admin/config/services/mailrelay/statistics/technology'] = array(
+    'title' => 'Technology',
+    'page callback' => 'mailrelay_statistics_page_technology',
+    'access arguments' => array('administer content'),
+		'weight' => 3,
+    'type' => MENU_LOCAL_TASK,
+		'file' => 'mailrelay_statistics_technology.inc',
   );
   return $items;
 }
@@ -19,12 +42,18 @@ function mailrelay_statistics_form($form, &$form_state) {
     $options[$row->id] = $row->subject;
   }
 
-  if (variable_get('mailrelay_statistics_value', '')) {
+  $path = current_path();
+  preg_match("/[^\/]+$/", $path, $matches);
+  $lastword = $matches[0];
+  if (is_numeric($lastword)) {
+    $mid = $lastword;
+  }
+  elseif (variable_get('mailrelay_statistics_value', '')) {
     $mid = variable_get('mailrelay_statistics_value', '');
   }
   else {
-    $mid = arg(5);
-  };
+    $mid = '';
+  }
 
   $form['mailinglists'] = array(
     '#title' => 'Mailing Lists',
@@ -32,7 +61,7 @@ function mailrelay_statistics_form($form, &$form_state) {
     '#options' => $options,
     '#default_value' => $mid,
     '#required' => TRUE,
-  );	
+  );
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Submit'),
@@ -46,111 +75,60 @@ function mailrelay_statistics_form_submit($form, &$form_state) {
 
 function mailrelay_statistics_page() {
   $render_form = drupal_get_form('mailrelay_statistics_form');
-	
+  $curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
+
   if (variable_get('mailrelay_statistics_value', '')) {
     $mid = variable_get('mailrelay_statistics_value', '');
   }
   else {
     $mid = arg(5);
-  };
+  };	
 
-	$curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
+  $postdata = array(
+    'function' => 'getStats',
+    'apiKey' => variable_get('mailrelay_api_key', ''),
+    'id' => $mid
+  );
 
-	$postdata = array(
-		'function' => 'getStats',
-		'apiKey' => variable_get('mailrelay_api_key', ''),
-		'id' => $mid
-	);
+  curl_setopt($curl, CURLOPT_POST, true);
+  curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
+  curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
 
-	curl_setopt($curl, CURLOPT_POST, true);
-	curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
-	curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+  $json = curl_exec($curl);
+  $result = json_decode($json);
+  $general_statistics = $result->data;
 
-	$json = curl_exec($curl);
-	$result = json_decode($json);
-	$general_statistics = $result->data;
-	
-	// Get Clicks informations
-	$postdataclick = array(
-		'function' => 'getClicksInfo',
-		'apiKey' => variable_get('mailrelay_api_key', ''),
-		'id' => $mid
-	);
-
-	curl_setopt($curl, CURLOPT_POST, true);
-	curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdataclick));
-	curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-
-	$json = curl_exec($curl);
-	$result = json_decode($json);
-	$click_statistics = $result->data;
-
-	variable_del('mailrelay_statistics_value', '');
-	
   if($mid) {
-
     foreach ($general_statistics as $key => $value) {
-			$key = ucwords(str_replace('_', ' ', t($key)));
-			$value_number = str_replace(',', '.', number_format($value));
-      $rows[] = array($key, $value_number);
-			$nametype[] = array($key);
-			$quantity[] = array($value);
+      $key = ucwords(str_replace('_', ' ', $key));
+      $rows[] = array(t($key), $value);
+      $gs_type[] = array(t($key));
+      $gs_quantity[] = array($value);
     }
-		
-    $header = array(
-      array('data' => t('Type')),
-      array('data' => t('Quantity')),
+
+    drupal_add_js('https://www.google.com/jsapi', 'external');
+    drupal_add_js(array(
+      'mailrelay_statistics' =>
+        array(
+          'gs_type' => $gs_type,
+          'gs_quantity' => $gs_quantity,
+          'gs_table' => $rows
+        )
+      ),
+      array('type' => 'setting')
     );
-
-    $render_table['#theme'] = 'table';
-    $render_table['#header'] = $header;
-    $render_table['#rows'] = $rows;
-
-    // Gera grafico por clicks nas cidade
-		$options = array();
-		foreach ($click_statistics as $key => $value) {
-			$location = explode(" - ", $value->location);
-			$city = $location[0];
-			$state = $location[1];
-			$options[] = $city;
-		}
-		
-		$count_city = array_count_values($options);
-		foreach ($count_city as $city_value => $city_quantity) {
-			$city_quantity = str_replace(',', '.', number_format($city_quantity));
-			$rows_clicks[] = array($city_value, $city_quantity);
-		}
-		// dpm($count_city);
-		
-		$header_clicks = array(
-			array('data' => t('City')),
-			array('data' => t('Quantity')),
-		);
-	
-		$render_table_clicks['#theme'] = 'table';
-		$render_table_clicks['#header'] = $header_clicks;
-		$render_table_clicks['#rows'] = $rows_clicks;
-
-
-    $build = array($render_form, $render_table, $render_table_clicks);
-
-		drupal_add_js('https://www.google.com/jsapi', 'external');
-		drupal_add_js(array(
-		  'mailrelay_statistics' => 
-			  array(
-			    'nametype' => $nametype,
-				  'quantity' => $quantity,
-				  'click_location' => $count_city
-			  )
-			),
-			array('type' => 'setting')
-		);
-		drupal_add_js(drupal_get_path('module', 'mailrelay_statistics') . '/js/statistic.js');
-
-    return $build;		
+    drupal_add_js(drupal_get_path('module', 'mailrelay_statistics') . '/js/statistic_general.js');
+    $data = array(
+      '#type' => 'markup',
+      '#prefix' => '<div id="general">',
+      '#markup' => '<h2>' . t('General') . '</h2>',
+      '#suffix' => '</div>',
+    );
+    $output = array($render_form, $data);
+    return $output;
   }
   else {
-		$build = array($render_form);
+    $build = $render_form;
     return $build;
   }
 }

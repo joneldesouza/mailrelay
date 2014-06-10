@@ -23,7 +23,7 @@ function mailrelay_mailinglists_getMailingLists() {
 
   $header = array(
     array('data' => t('Subject')),
-    array('data' => t('Send date')),
+    array('data' => t('Sent date')),
     array('data' => t('Sent for subscribers')),
     array('data' => t('Statistics')),
   );

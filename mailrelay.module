@@ -21,6 +21,7 @@ function mailrelay_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('mailrelay_admin'),
     'access arguments' => array('administer mailrelay'),
+		'type' => MENU_NORMAL_ITEM,
   );
   $items['admin/config/services/mailrelay/settings'] = array(
     'title' => 'Settings',
