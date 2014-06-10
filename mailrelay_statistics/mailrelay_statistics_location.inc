@@ -33,7 +33,7 @@ function mailrelay_statistics_getGeoClicks() {
     'id' => $mid
   );
 
-  curl_setopt($curl, CURLOPT_POST, true);
+  curl_setopt($curl, CURLOPT_POST, TRUE);
   curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
   curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
 
@@ -41,14 +41,14 @@ function mailrelay_statistics_getGeoClicks() {
   $result = json_decode($json);
   $click_statistics = $result->data;
 
-  if(!$mid == 0) {
+  if (!$mid == 0) {
     $options = array();
     $country = array();
     foreach ($click_statistics as $key => $value) {
       $location = explode(' - ', $value->location);
       $city = $location[0];
       $state = $location[1];
-      $options[] = $city .', '. $state .', '. $value->country;
+      $options[] = $city . ', ' . $state . ', ' . $value->country;
       $country[] = $value->country;
     }
     $count_table = array_count_values($options);
@@ -95,7 +95,7 @@ function mailrelay_statistics_getGeoViews() {
     'id' => $mid
   );
 
-  curl_setopt($curl, CURLOPT_POST, true);
+  curl_setopt($curl, CURLOPT_POST, TRUE);
   curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
   curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
 
@@ -103,14 +103,14 @@ function mailrelay_statistics_getGeoViews() {
   $result = json_decode($json);
   $views_statistics = $result->data;
 
-  if(!$mid == 0) {
+  if (!$mid == 0) {
     $options = array();
     $country = array();
     foreach ($views_statistics as $key => $value) {
       $location = explode(' - ', $value->location);
       $city = $location[0];
       $state = $location[1];
-      $options[] = $city .', '. $state .', '. $value->country;
+      $options[] = $city . ', ' . $state . ', ' . $value->country;
       $country[] = $value->country;
     }
     $count_table = array_count_values($options);

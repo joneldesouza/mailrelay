@@ -7,7 +7,7 @@ function mailrelay_subscribers_menu() {
     'description' => 'List of subscribers for Mailrelay account',
     'page callback' => 'mailrelay_subscribers_getSubscribers',
     'access arguments' => array('access content'),
-		'weight' => 3,
+    'weight' => 3,
     'type' => MENU_LOCAL_TASK,
   );
   return $items;

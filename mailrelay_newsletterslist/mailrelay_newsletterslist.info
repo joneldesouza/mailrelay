@@ -1,0 +1,5 @@
+name = Mailrelay Newsletters List
+description = Get a list of sent newsletters
+dependencies[] = mailrelay
+core = 7.x
+package = Mailrelay

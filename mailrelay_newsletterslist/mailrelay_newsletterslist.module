@@ -1,29 +1,30 @@
 <?php
 
-function mailrelay_mailinglists_menu() {
+function mailrelay_newsletterslist_menu() {
   $items = array();
-  $items['admin/config/services/mailrelay/mailinglists'] = array(
-    'title' => 'Mailing Lists',
-    'description' => 'List of mailing lists',
-    'page callback' => 'mailrelay_mailinglists_getMailingLists',
+  $items['admin/config/services/mailrelay/newsletters'] = array(
+    'title' => 'Newsletters List',
+    'description' => 'List of sent newsletters',
+    'page callback' => 'mailrelay_newsletterslist_getMailingLists',
     'access arguments' => array('access content'),
-		'weight' => 1,
+    'weight' => 1,
     'type' => MENU_LOCAL_TASK,
   );
   return $items;
 }
 
-function mailrelay_mailinglists_getMailingLists() {
-  $lists = mailrelay_mailinglists_getMailingListsData();
+function mailrelay_newsletterslist_getMailingLists() {
+  $lists = mailrelay_newsletterslist_getMailingListsData();
   foreach ($lists as $value) {
     $statistic = '<a href="' . url('admin/config/services/mailrelay/statistics/' . $value->id) . '">Statistic</a>';
-		$value_number = str_replace(',', '.', number_format($value->sent));
-    $rows[] = array($value->subject, $value->send_date, $value_number, $statistic);
+    $value_number = str_replace(',', '.', number_format($value->sent));
+    $send_date = format_date(strtotime($value->send_date), 'short');
+    $rows[] = array($value->subject, $send_date, $value_number, $statistic);
   }
 
   $header = array(
     array('data' => t('Subject')),
-    array('data' => t('Sent date')),
+    array('data' => t('Send date')),
     array('data' => t('Sent for subscribers')),
     array('data' => t('Statistics')),
   );
@@ -34,7 +35,7 @@ function mailrelay_mailinglists_getMailingLists() {
   return $build;
 }
 
-function mailrelay_mailinglists_getMailingListsData() {
+function mailrelay_newsletterslist_getMailingListsData() {
   $curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
 
   $postdata = array(

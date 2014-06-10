@@ -17,3 +17,9 @@ function mailrelay_requirements($phase) {
   }
   return $requirements;
 }
+
+function mailrelay_uninstall() {
+  variable_del('mailrelay_hostname');
+  variable_del('mailrelay_api_key');
+  variable_del('mailrelay_statistics_value');
+}

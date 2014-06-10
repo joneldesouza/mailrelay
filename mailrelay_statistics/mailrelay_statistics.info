@@ -1,5 +1,6 @@
 name = Mailrelay Statistics
 description = Get basic mailing list stats containing number of views, clicks, sent emails, bounced, spam reports and total subscribers
-dependencies[] = mailrelay, mailrelay_mailinglists
+dependencies[] = mailrelay
+dependencies[] = mailrelay_newsletterslist
 core = 7.x
 package = Mailrelay

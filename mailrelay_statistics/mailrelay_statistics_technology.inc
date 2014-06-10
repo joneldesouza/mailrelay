@@ -37,7 +37,7 @@ function mailrelay_statistics_getGeoClicks() {
     'id' => $mid
   );
 
-  curl_setopt($curl, CURLOPT_POST, true);
+  curl_setopt($curl, CURLOPT_POST, TRUE);
   curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
   curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
 
@@ -45,7 +45,7 @@ function mailrelay_statistics_getGeoClicks() {
   $result = json_decode($json);
   $click_statistics = $result->data;
 
-  if(!$mid == 0) {
+  if (!$mid == 0) {
     $browser = array();
     $os = array();
     $screen_resolution = array();
