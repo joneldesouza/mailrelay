@@ -36,7 +36,7 @@ function mailrelay_statistics_menu() {
 }
 
 function mailrelay_statistics_form($form, &$form_state) {
-  $mailinglists = mailrelay_mailinglists_getMailingListsData();
+  $mailinglists = mailrelay_newsletterslist_getMailingListsData();
   $options = array();
   foreach ($mailinglists as $row) {
     $options[$row->id] = $row->subject;
@@ -74,6 +74,8 @@ function mailrelay_statistics_form_submit($form, &$form_state) {
 }
 
 function mailrelay_statistics_page() {
+  if (!variable_get('mailrelay_hostname') == 0) {
+
   $render_form = drupal_get_form('mailrelay_statistics_form');
   $curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
 
@@ -128,7 +130,12 @@ function mailrelay_statistics_page() {
     return $output;
   }
   else {
-    $build = $render_form;
-    return $build;
+    return $render_form;
+  }
+  }
+  else {
+    $message = drupal_set_message(t('Register a Hostname and API Key'), 'error');
+    $message .= drupal_goto('admin/config/services/mailrelay');
+    return $message;
   }
 }

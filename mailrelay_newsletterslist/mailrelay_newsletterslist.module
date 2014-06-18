@@ -10,29 +10,64 @@ function mailrelay_newsletterslist_menu() {
     'weight' => 1,
     'type' => MENU_LOCAL_TASK,
   );
+	$items['admin/config/services/mailrelay/newsletters/send'] = array(
+    'title' => 'Newsletters List',
+    'description' => 'Send newsletter',
+		'page callback' => 'drupal_get_form',
+    'page arguments' => array('mailrelay_newsletterslist_send_form'),
+    'access arguments' => array('access content'),
+    'weight' => 1,
+    'type' => MENU_LOCAL_TASK,
+  );
   return $items;
 }
 
-function mailrelay_newsletterslist_getMailingLists() {
-  $lists = mailrelay_newsletterslist_getMailingListsData();
-  foreach ($lists as $value) {
-    $statistic = '<a href="' . url('admin/config/services/mailrelay/statistics/' . $value->id) . '">Statistic</a>';
-    $value_number = str_replace(',', '.', number_format($value->sent));
-    $send_date = format_date(strtotime($value->send_date), 'short');
-    $rows[] = array($value->subject, $send_date, $value_number, $statistic);
+/**
+ * Implements hook_menu_local_tasks_alter(&$data, $router_item, $root_path).
+ */
+function mailrelay_newsletterslist_menu_local_tasks_alter(&$data, $router_item, $root_path) {
+  if ($root_path == 'admin/config/services/mailrelay/newsletters') {
+    // Add an action linking to node/add to all pages.
+    $data['actions']['output'][] = array(
+      '#theme' => 'menu_local_task',
+      '#link' => array(
+        'title' => t('Send Newsletter'),
+        'href' => 'admin/config/services/mailrelay/newsletters/send',
+        'localized_options' => array(
+          'attributes' => array(
+            'title' => t('Send Newsletter'),
+          ),
+        ),
+      ),
+    );
   }
+}
 
-  $header = array(
-    array('data' => t('Subject')),
-    array('data' => t('Send date')),
-    array('data' => t('Sent for subscribers')),
-    array('data' => t('Statistics')),
-  );
-
-  $build['#theme'] = 'table';
-  $build['#header'] = $header;
-  $build['#rows'] = $rows;
-  return $build;
+function mailrelay_newsletterslist_getMailingLists() {
+  if (!variable_get('mailrelay_hostname') == 0) {
+    $lists = mailrelay_newsletterslist_getMailingListsData();
+    foreach ($lists as $value) {
+      $statistic = '<a href="' . url('admin/config/services/mailrelay/statistics/' . $value->id) . '">Statistic</a>';
+      $value_number = str_replace(',', '.', number_format($value->sent));
+      $send_date = format_date(strtotime($value->send_date), 'short');
+      $rows[] = array($value->subject, $send_date, $value_number, $statistic);
+    }
+    $header = array(
+      array('data' => t('Subject')),
+      array('data' => t('Send date')),
+      array('data' => t('Sent for subscribers')),
+      array('data' => t('Statistics')),
+    );
+    $build['#theme'] = 'table';
+    $build['#header'] = $header;
+    $build['#rows'] = $rows;
+    return $build;	
+  }
+  else {
+    $message = drupal_set_message(t('Register a Hostname and API Key'), 'error');
+    $message .= drupal_goto('admin/config/services/mailrelay');
+    return $message;
+  }
 }
 
 function mailrelay_newsletterslist_getMailingListsData() {
@@ -50,4 +85,77 @@ function mailrelay_newsletterslist_getMailingListsData() {
   $json = curl_exec($curl);
   $result = json_decode($json);
   return $result->data;
+}
+
+function mailrelay_newsletterslist_send_form($form, &$form_state) {
+  $curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
+
+  $postdata = array(
+    'function' => 'getSubscribers',
+    'apiKey' => variable_get('mailrelay_api_key', ''),
+    'offset' => 0,
+    'count' => 2
+  );
+
+  curl_setopt($curl, CURLOPT_POST, TRUE);
+  curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
+  curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+  $json = curl_exec($curl);
+  $result = json_decode($json);
+	$subscibers = $result->data;
+	dpm($subscibers);
+	
+	$form['subject'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Subject'),
+		'#maxlength' => 128,
+  );
+	$form['html'] = array(
+	  '#title' => t('HTML'),
+	  '#type' => 'textarea',
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  return $form;
+}
+
+function mailrelay_newsletterslist_send_form_submit($form, &$form_state) {
+  $curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
+
+  // Create rcpt array to send emails to 2 rcpts
+  $rcpt = array(
+    array(
+      'name' => 'Jonel de Souza Nogueira', 
+      'email' => 'joneldesouza@gmail.com'
+    ),
+  );
+
+  $postData = array(
+    'function' => 'sendMail',
+    'apiKey' => variable_get('mailrelay_api_key', ''),
+    'subject' => $form_state['values']['subject'],
+    'html' => $form_state['values']['html'],
+    'mailboxFromId' => 1,
+    'mailboxReplyId' => 1,
+    'mailboxReportId' => 1,
+    'packageId' => 6,
+    'emails' => $rcpt
+  );
+  $post = http_build_query($postData);
+  curl_setopt($curl, CURLOPT_POST, true);
+  curl_setopt($curl, CURLOPT_POSTFIELDS, $post);
+  curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+  $json = curl_exec($curl);
+  $result = json_decode($json);
+
+  if ($result->status == 0) {
+    drupal_set_message(t('Newsletter não enviada'), 'error');
+  }
+  if ($result->status == 1) {
+    drupal_set_message(t('Newsletter enviada'), 'status');
+  }
 }

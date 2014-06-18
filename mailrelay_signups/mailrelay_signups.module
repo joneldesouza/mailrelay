@@ -75,7 +75,7 @@ function mailrelay_signups_form_validate($form, &$form_state) {
 }
 
 function mailrelay_signups_form_submit($form, &$form_state) {
-  $curl = curl_init('http://' . variable_get('mailrelay_signups_hostname', '') . '/ccm/admin/api/version/2/&type=json');
+  $curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
 
   if (!empty($form_state['values']['groups'])) {
     $group = $form_state['values']['groups'];
@@ -86,7 +86,7 @@ function mailrelay_signups_form_submit($form, &$form_state) {
 
   $postdata = array(
     'function' => 'addSubscriber',
-    'apiKey' => variable_get('mailrelay_signups_api_key', ''),
+    'apiKey' => variable_get('mailrelay_api_key', ''),
     'email' => $form_state['values']['email'],
     'name' => $form_state['values']['name'],
     'groups' => $group
@@ -108,11 +108,11 @@ function mailrelay_signups_form_submit($form, &$form_state) {
 }
 
 function mailrelay_signups_getGroups() {
-  $curl = curl_init('http://' . variable_get('mailrelay_signups_hostname', '') . '/ccm/admin/api/version/2/&type=json');
+  $curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
 
   $postdata = array(
     'function' => 'getGroups',
-    'apiKey' => variable_get('mailrelay_signups_api_key', '')
+    'apiKey' => variable_get('mailrelay_api_key', '')
   );
 
   curl_setopt($curl, CURLOPT_POST, TRUE);
