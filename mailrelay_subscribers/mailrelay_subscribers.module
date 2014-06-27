@@ -1,0 +1,66 @@
+<?php
+/**
+ * @file
+ * The functions for the Mailrelay Subscribers module.
+ */
+ 
+function mailrelay_subscribers_menu() {
+  $items = array();
+  $items['admin/config/services/mailrelay/subscribers'] = array(
+    'title' => 'Subscribers',
+    'description' => 'List of subscribers for Mailrelay account',
+    'page callback' => 'mailrelay_subscribers_page',
+    'access arguments' => array('access content'),
+    'weight' => 3,
+    'type' => MENU_LOCAL_TASK,
+  );
+  return $items;
+}
+
+function mailrelay_subscribers_page() {
+  if (!variable_get('mailrelay_hostname') == 0) {
+    $subscribers = mailrelay_subscribers_getSubscribers();
+
+    foreach ($subscribers as $row) {
+      $rows[] = array($row->name, $row->email);
+    }
+
+    $header = array(
+      array('data' => t('Name')),
+      array('data' => t('Email')),
+    );
+
+    $per_page = 20;
+    // Initialize the pager
+    $current_page = pager_default_initialize(count($rows), $per_page);
+    // Split your list into page sized chunks
+    $chunks = array_chunk($rows, $per_page, TRUE);
+    // Show the appropriate items from the list
+    $output = theme('table', array('header' => $header, 'rows' => $chunks[$current_page], 'sticky' => TRUE, 'empty' => 'No registered mail.'));
+    // Show the pager
+    $output .= theme('pager', array('quantity', count($rows)));
+    return $output;
+  }
+  else {
+    $message = drupal_set_message(t('Register a Hostname and API Key'), 'error');
+    $message .= drupal_goto('admin/config/services/mailrelay');
+    return $message;
+  }
+}
+
+function mailrelay_subscribers_getSubscribers() {
+  $curl = curl_init('http://' . variable_get('mailrelay_hostname', '') . '/ccm/admin/api/version/2/&type=json');
+
+  $postdata = array(
+    'function' => 'getSubscribers',
+    'apiKey' => variable_get('mailrelay_api_key', ''),
+  );
+
+  curl_setopt($curl, CURLOPT_POST, TRUE);
+  curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postdata));
+  curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+  $json = curl_exec($curl);
+  $result = json_decode($json);
+  return $result->data;
+}

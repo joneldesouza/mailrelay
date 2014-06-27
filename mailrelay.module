@@ -1,0 +1,55 @@
+<?php
+/**
+ * @file
+ * The functions for the Mailrelay Signup module.
+ */
+ 
+function mailrelay_permission() {
+  return array(
+    'administer mailrelay' => array(
+      'title' => t('Access Mailrelay settings'),
+      'description' => t('Allow users to access Mailrelay settings'),
+    ),
+  );
+}
+
+function mailrelay_menu() {
+  $items = array();
+  $items['admin/config/services/mailrelay'] = array(
+    'title' => 'Mailrelay',
+    'description' => 'Configures the data from Mailrelay settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('mailrelay_admin'),
+    'access arguments' => array('administer mailrelay'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/config/services/mailrelay/settings'] = array(
+    'title' => 'Settings',
+    'weight' => 0,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  return $items;
+}
+
+function mailrelay_admin() {
+  $form = array();
+  $form['mailrelay_hostname'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Hostname for Mailrelay'),
+    '#default_value' => variable_get('mailrelay_hostname', ''),
+    '#size' => 40,
+    '#maxlength' => 255,
+    '#description' => t('Hostname to connect Mailrelay API.'),
+    '#required' => TRUE,
+  );
+  $form['mailrelay_api_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('API key'),
+    '#default_value' => variable_get('mailrelay_api_key', ''),
+    '#size' => 50,
+    '#maxlength' => 255,
+    '#description' => t('The API key generated for our Mailrelay account.'),
+    '#required' => TRUE,
+  );
+  return system_settings_form($form);
+}
