@@ -1,5 +1,0 @@
-name = Mailrelay Subscribers
-description = Get a list of subscribers
-dependencies[] = mailrelay
-core = 7.x
-package = Mailrelay
