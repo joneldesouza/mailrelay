@@ -1,4 +1,0 @@
-name = Mailrelay Integration
-description = Mailrelay Integration API
-core = 7.x
-package = Mailrelay
